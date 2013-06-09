@@ -31,10 +31,16 @@ class BookChartYes24(BookChart):
        }
 
 
-        
+
 
 
     '''
+
+        3 types of bestseller list could be possible.
+            1. monthly : week and day are None.
+            2. weekly : only day is None.
+            3. daily : day is set.
+
         @type  date: datetime.date
         @param date: the date in which the bestsellers are listed.
 
@@ -44,15 +50,48 @@ class BookChartYes24(BookChart):
 
         @type day : number
         @param day : nth day of the specific month. day must be more than 0
-        
+
+
+        @rtype:  json
+        @return: information of books
+
 
     '''
     def getBestSellerChart(self, year, month, week = None, day = None):
 
+        content = self._connect(year, month, week, day)
+
+        # to test
+        # with open('./yes24BestSellerListExample_Weekly.htm','r') as fd:
+        #     content = ''
+        #     for line in fd:
+        #         content += line
+
+
+
+        # parse and convert into json format
+        import json
+        jsonData = json.dumps(self._parse(content), # do _parse()
+                             separators=(',', ': ')
+                    )
+
+        return jsonData
+
+        '''
+            TODO
+
+
+
+
+        '''
+
+
+    def _connect(self, year, month, week, day):
         # debug
         year = str(year)
         month = '6'
         week = str(2) # 2nd week of the month
+
 
         periodKey = 'month'
         postfix = ''
@@ -63,9 +102,6 @@ class BookChartYes24(BookChart):
         if day is not None:
             periodKey = 'day'
             postfix = "&day=" + str(day)
-
-
-
 
 
         ################################
@@ -81,78 +117,85 @@ class BookChartYes24(BookChart):
 
         response, content = self.http.request(url,
                                        "GET",
-                                       headers=headers,
+                                       headers=self.headers,
                             )
 
-        print content
+
+        if response['status'] != '200' :
+            '''
+            TODO
+                raise error depends on status
+            '''
+            raise
+
+        return content
 
 
-
-
-#------------------------------------------------------------------------------------
-def parse(data):
-
-    import re
-
-    from lxml import html
-    # DOM making
-    root = html.fromstring(data)
-
-    bestsellerTable = root.get_element_by_id('category_layout')
-
-    bookCovers = bestsellerTable.find_class('image')
-    bookInfos = [image.getparent() for image in bookCovers]
-
-
-    ################################
-    # Yes24 specific format
-    # A book has two <tr>s
-    # <tr> book information </tr>
-    # <tr> book description </tr>
-    bookInfos = []
-    bookDescs = []
-    max = len(bestsellerTable)
-    for i in range(0, max, 2):
-        bookInfos.append(bestsellerTable[i])
-        bookDescs.append(bestsellerTable[i+1])
-
-    bslist = []
-    for book in bookInfos:
-        item = {}
-        item['rank'] = int(book.find_class("num")[0].text[:-1])
-        item['bookcoverUrl'] = book.find_class("image")[0].find(".//img").get('src')
-        item['title'] = book.find(".//p").text_content()    # get 1st <p> tag
-        bslist.append(item)
-
-    # debug
-    print bslist
 
     '''
-        TODO
+        parse the received data to retrieve the book information
 
-        convert into json format
-
+        @rtype:  list
+        @return: list of information dictionary of books
     '''
-    
+    def _parse(self, data):
+
+        import re
+
+        from lxml import html
+        # DOM making
+        root = html.fromstring(data)
+
+
+        ################################
+        # Yes24 specific formats
+
+        bestsellerTable = root.get_element_by_id('category_layout')
+
+        bookCovers = bestsellerTable.find_class('image')
+        bookInfos = [image.getparent() for image in bookCovers]
+
+
+        ################################
+        # A book has two <tr>s
+        # <tr> book information </tr>
+        # <tr> book description </tr>
+        bslist = []
+        max = len(bestsellerTable)
+        for i in range(0, max, 2):
+            bookInfo = bestsellerTable[i]
+            bookDesc = bestsellerTable[i+1]
+
+            item = {}
+            item['rank'] = int(bookInfo.find_class("num")[0].text[:-1])
+            item['bookcoverUrl'] = bookInfo.find_class("image")[0].find(".//img").get('src')
+            item['title'] = bookInfo.find(".//p").text_content()    # get 1st <p> tag
+            item['summary'] = bookDesc.find_class('read')[0].text
+
+            bslist.append(item)
+
+
+        return bslist
+
+
+
+
+
+
+
+
+
 
 
 #------------------------------------------------------------------------------------
 if __name__ == "__main__":
 
-    # yes24 = BookChartYes24()
-    # result = yes24.getBestSellerChart(2012, 6, week=2)
-    # print result
+    yes24 = BookChartYes24()
+    result = yes24.getBestSellerChart(2012, 6, week=2)
+    print result
 
 
-    # to test
-    with open('./yes24BestSellerListExample_Weekly.htm','r') as fd:
-        content = ''
-        for line in fd:
-            content += line
 
-    print content
-
-    parse(content)
 
 
 
