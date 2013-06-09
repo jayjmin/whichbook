@@ -54,6 +54,19 @@ class BookChartYes24(BookChart):
 
         @rtype:  json
         @return: information of books
+            for example : 
+            {
+                {
+                    'rank' : 1,
+                    'bookcoverUrl' : "http://googl.e",
+                    'title' : "blah",
+                    'summary' : "blahblahblahblah"
+                },
+                {
+                    ...
+                }
+            
+            }
 
 
     '''
