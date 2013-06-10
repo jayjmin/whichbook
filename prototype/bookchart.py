@@ -3,6 +3,47 @@
 
 
 
+GAE_DJANGO = False
+
+if GAE_DJANGO :
+    import logging
+    from django.core.cache import cache
+    from django.http import HttpResponseRedirect
+    from django.http import HttpResponse
+    from django.views.generic.simple import direct_to_template
+
+    from google.appengine.ext import db
+
+
+class BestSellerList():
+    def __init__(self):
+        self.data = None
+
+    '''
+        @rtype list
+        @return self.data which has the list of bestsellers' information
+                in forms of the python list format.
+    '''
+    def get(self):
+        return self.data
+
+    '''
+        @rtype json
+        @return self.data which has the list of bestsellers' information
+                in forms of the json format
+    '''
+    def getJson(self):
+        import json
+        jsonData = json.dumps(self.data, # do _parse()
+                             separators=(',', ': ')
+                    )
+
+        return jsonData
+
+    def set(self, data):
+        self.data = data
+
+
 class BookChart():
     pass
 
@@ -12,11 +53,11 @@ class BookChartYes24(BookChart):
 
     def __init__(self):
 
+
+        self.bsl = BestSellerList()
+
         ################################
         # session
-        import httplib2
-
-        self.http = httplib2.Http()
         self.headers = {
            "cache-control":"no-cache",
            "Connection": "keep-alive",
@@ -54,7 +95,7 @@ class BookChartYes24(BookChart):
 
         @rtype:  json
         @return: information of books
-            for example : 
+            for example :
             {
                 {
                     'rank' : 1,
@@ -65,7 +106,7 @@ class BookChartYes24(BookChart):
                 {
                     ...
                 }
-            
+
             }
 
 
@@ -83,12 +124,11 @@ class BookChartYes24(BookChart):
 
 
         # parse and convert into json format
-        import json
-        jsonData = json.dumps(self._parse(content), # do _parse()
-                             separators=(',', ': ')
-                    )
 
-        return jsonData
+
+        self._parse(content)
+        return self.bsl
+
 
         '''
             TODO
@@ -100,6 +140,15 @@ class BookChartYes24(BookChart):
 
 
     def _connect(self, year, month, week, day):
+
+        if GAE_DJANGO :
+            from google.appengine.api import urlfetch
+        else :
+            import httplib2
+
+
+
+
         # debug
         year = str(year)
         month = '6'
@@ -128,20 +177,47 @@ class BookChartYes24(BookChart):
 &month=" + str(month) + postfix
 
 
-        response, content = self.http.request(url,
+        if GAE_DJANGO :
+            result = urlfetch.fetch(url,
+                            method=urlfetch.GET,
+                            headers=self.headers,
+                            deadline=60
+                        )
+            if result.status_code != 200:
+                print "status code = ", result.status_code
+                raise
+
+            dataRetrieved = result.content
+
+            # uncompress gzip data
+            key = 'content-encoding'
+            if result.headers.has_key(key) is True:
+                if result.headers[key] == 'gzip' :
+                    import StringIO
+                    import gzip
+
+                    gzip_stream = StringIO.StringIO(dataRetrieved)
+                    gzip_file = gzip.GzipFile(fileobj=gzip_stream)
+                    dataRetrieved = gzip_file.read()
+
+            return dataRetrieved
+
+
+        else :
+
+            response, content = httplib2.Http().request(url,
                                        "GET",
                                        headers=self.headers,
                             )
 
+            if response['status'] != '200' :
+                '''
+                TODO
+                    raise error depends on status
+                '''
+                raise
 
-        if response['status'] != '200' :
-            '''
-            TODO
-                raise error depends on status
-            '''
-            raise
-
-        return content
+            return content
 
 
 
@@ -156,6 +232,8 @@ class BookChartYes24(BookChart):
         import re
 
         from lxml import html
+
+
         # DOM making
         root = html.fromstring(data)
 
@@ -188,7 +266,8 @@ class BookChartYes24(BookChart):
             bslist.append(item)
 
 
-        return bslist
+        self.bsl.set(bslist)
+
 
 
 
@@ -204,7 +283,7 @@ class BookChartYes24(BookChart):
 if __name__ == "__main__":
 
     yes24 = BookChartYes24()
-    result = yes24.getBestSellerChart(2012, 6, week=2)
+    result = yes24.getBestSellerChart(2012, 6, week=2).get()
     print result
 
 
