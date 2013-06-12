@@ -1,0 +1,6 @@
+We use the StaggeredGridView source to show bestseller list on Android
+[https://github.com/maurycyw / StaggeredGridView]
+
+
+to run this example source,
+	eclipse >> File >> import
