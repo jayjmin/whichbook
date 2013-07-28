@@ -17,7 +17,8 @@ if GAE_DJANGO :
 
 class BestSellerList():
     def __init__(self):
-        self.data = None
+        self.data = None    # python list type
+        self.dataUtf8 = None # python list which has Utf-8 string
 
     '''
         @rtype list
@@ -26,6 +27,18 @@ class BestSellerList():
     '''
     def get(self):
         return self.data
+
+
+    '''
+        @rtype list
+        @return self.dataUtf8 which has the list of bestsellers' information,
+                which has the utf-8 encoded string,
+                in forms of the python list format.
+    '''
+    def getUtf8(self):
+        return self.dataUtf8
+
+
 
     '''
         @rtype json
@@ -40,8 +53,12 @@ class BestSellerList():
 
         return jsonData
 
-    def set(self, data):
+
+
+    def set(self, data, dataUtf8):
         self.data = data
+        self.dataUtf8 = dataUtf8
+
 
 
 class BookChart():
@@ -222,10 +239,14 @@ class BookChartYes24(BookChart):
 
 
     '''
+        Pare and Set self.BestSellerList
         parse the received data to retrieve the book information
 
-        @rtype:  list
-        @return: list of information dictionary of books
+        @type data : python string
+        @param data : html-format data
+
+
+
     '''
     def _parse(self, data):
 
@@ -235,7 +256,7 @@ class BookChartYes24(BookChart):
 
 
         # DOM making
-        root = html.fromstring(data)
+
 
 
         ################################
@@ -243,47 +264,61 @@ class BookChartYes24(BookChart):
 
         bestsellerTable = root.get_element_by_id('category_layout')
 
-        bookCovers = bestsellerTable.find_class('image')
-        bookInfos = [image.getparent() for image in bookCovers]
-
-
         ################################
         # A book has two <tr>s
         # <tr> book information </tr>
         # <tr> book description </tr>
         bslist = []
+        bslistUtf8 = []
         max = len(bestsellerTable)
+
         for i in range(0, max, 2):
             bookInfo = bestsellerTable[i]
             bookDesc = bestsellerTable[i+1]
 
             item = {}
-            item['rank'] = int(bookInfo.find_class("num")[0].text[:-1])
-            item['bookcoverUrl'] = bookInfo.find_class("image")[0].find(".//img").get('src')
+            itemUtf8 = {}
+
+            itemUtf8['rank'] = item['rank'] = int(bookInfo.find_class("num")[0].text[:-1])
+            itemUtf8['bookcoverUrl'] = item['bookcoverUrl'] = bookInfo.find_class("image")[0].find(".//img").get('src')
             item['title'] = bookInfo.find(".//p").text_content()    # get 1st <p> tag
             item['summary'] = bookDesc.find_class('read')[0].text
 
+            itemUtf8['rank'] = item['rank']
+            itemUtf8['bookcoverUrl'] = bookInfo.find_class("image")[0].find(".//img").get('src')
+            itemUtf8['title'] = item['title'].encode('utf-8')
+            itemUtf8['summary'] = item['summary'].encode('utf-8')
+
             bslist.append(item)
+            bslistUtf8.append(itemUtf8)
 
 
-        self.bsl.set(bslist)
+        self.bsl.set(bslist, bslistUtf8)
 
 
+def week_of_month(date):
+    month = date.month
+    week = 0
+    while date.month == month:
+        week += 1
+        date -= timedelta(days=7)
 
-
-
-
-
-
-
-
-
+    return week
 
 #------------------------------------------------------------------------------------
 if __name__ == "__main__":
 
+    from datetime import datetime
+    from datetime import timedelta
+
+    offset = 7
+
+    bsPeriod = datetime.now() - timedelta(days=offset)
+    week = week_of_month(bsPeriod)
+    
+
     yes24 = BookChartYes24()
-    result = yes24.getBestSellerChart(2012, 6, week=2).get()
+    result = yes24.getBestSellerChart(bsPeriod.year, bsPeriod.month, week=week).get()
     print result
 
 

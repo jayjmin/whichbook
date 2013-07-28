@@ -1,0 +1,38 @@
+
+
+
+
+MainActivity.onCreate(Bundle) line: 56
+  gridView.setAdapter(adapter);
+  public void setAdapter(ListAdapter adapter) {
+    // namh
+    // mObserver is called when the data of adapter is changed
+    adapter.registerDataSetObserver(mObserver); 
+    mRecycler.setViewTypeCount(adapter.getViewTypeCount());
+  }
+  adapter.notifyDataSetChanged();
+  StaggeredAdapter(ArrayAdapter).notifyDataSetChanged() line: 286
+    StaggeredAdapter(BaseAdapter).notifyDataSetChanged() line: 50   
+      DataSetObservable.notifyChanged() line: 35
+        StaggeredGridView$AdapterDataSetObserver.onChanged() line: 2020
+          StaggeredGridView.requestLayout() line: 894
+
+
+
+
+StaggeredGridView.onLayout(boolean, int, int, int, int) line: 927   
+StaggeredGridView.populate(boolean) line: 981   
+StaggeredGridView.fillDown(int, int) line: 1475 
+
+while (nextCol >= 0 && mItemBottoms[nextCol] < fillTo && position < mItemCount) {
+            final View child = obtainView(position, null);
+
+StaggeredGridView.obtainView(int, View) line: 1660
+StaggeredAdapter.getView(int, View, ViewGroup) line: 31 
+
+
+
+
+
+  
+
